@@ -1,4 +1,5 @@
 import os
+import torch
 import random
 from functools import partial
 import PIL
@@ -54,6 +55,22 @@ class TripletDataset(Dataset) :
     
     def __len__(self) :
         return self.df.shape[0]
+
+def collate_fn(tokenizer, samples) :
+    batch_size = len(samples)
+    if len(samples[0]) == 2:
+        images, texts = zip(*samples)
+        images = torch.stack(images)
+        texts = tokenizer(list(texts), padding=True, truncation=True, return_tensors="pt")
+        return images, texts
+    anchor_images, anchor_texts, pos_images, pos_texts, neg_images, neg_texts = zip(*samples)
+    anchor_images = torch.stack(anchor_images)
+    pos_images = torch.stack(pos_images)
+    neg_images = torch.stack(neg_images)
+    anchor_texts = tokenizer(list(anchor_texts), padding=True, truncation=True, return_tensors="pt")
+    pos_texts = tokenizer(list(pos_texts), padding=True, truncation=True, return_tensors="pt")
+    neg_texts = tokenizer(list(neg_texts), padding=True, truncation=True, return_tensors="pt")
+    return anchor_images, anchor_texts, pos_images, pos_texts, neg_images, neg_texts
 
 def create_dl(images_path, df_paths, img_tfms, pretrianed_tokenizer='distilbert-base-uncased', 
               batch_size=64, shuffle = True, testing = False) :
