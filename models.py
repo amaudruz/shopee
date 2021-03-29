@@ -1,18 +1,50 @@
 from timm.models import layers
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import timm
 from torch.nn.modules.batchnorm import BatchNorm1d, BatchNorm2d
-from transformers import DistilBertModel
+from transformers import BertModel
+import numpy as np
 
 class EmbedorNN(nn.Module) :
-    def __init__(self, pretrained_image_embedor='resnet18', pretrained_text_embedor='distilbert-base-uncased',
-                output_dim=128) :
+    def __init__(self, pretrained_image_embedor='resnet50', pretrained_text_embedor='bert-base-uncased',
+                output_dim=512) :
         super(EmbedorNN, self).__init__()
         self.image_embedor = timm.create_model(pretrained_image_embedor, pretrained=True)
         self.image_pool = nn.AdaptiveAvgPool2d((1,1))
-        self.text_embedor = DistilBertModel.from_pretrained('distilbert-base-uncased')
-        self.head = nn.Linear(512+768, output_dim)
+        self.text_embedor = BertModel.from_pretrained(pretrained_text_embedor)
+        self.head = nn.Sequential(nn.Linear(2048+768, output_dim), 
+                                  #nn.ReLU(), 
+                                  #nn.Linear(1024, output_dim)
+                                 )
+        
+        for m in self.head.modules():
+            if isinstance(m, nn.Linear):
+                sz = m.weight.data.size(-1)
+                m.weight.data.normal_(mean=0.0, std=1/np.sqrt(sz))
+            elif isinstance(m, (nn.LayerNorm, nn.BatchNorm1d)):
+                m.bias.data.zero_()
+                m.weight.data.fill_(1.0)
+                m.bias.data.zero_()
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                m.bias.data.zero_()
+            
+    def freeze_lm(self):
+        for parameter in self.text_embedor.parameters():
+            parameter.requires_grad = False
+            
+    def unfreeze_lm(self):
+        for parameter in self.text_embedor.parameters():
+            parameter.requires_grad = True
+            
+    def freeze_cnn(self):
+        for parameter in self.image_embedor.parameters():
+            parameter.requires_grad = False
+            
+    def unfreeze_cnn(self):
+        for parameter in self.image_embedor.parameters():
+            parameter.requires_grad = True
     
     def forward(self, x) :
         images, texts = x
@@ -21,7 +53,7 @@ class EmbedorNN(nn.Module) :
         out_text = self.text_embedor(texts['input_ids'], 
                                      attention_mask=texts['attention_mask'])[0][:,0,:]
         out = torch.cat([out_images, out_text], dim=-1)
-        return self.head(out)
+        return F.normalize(self.head(out), dim=-1)
 
 class Decidor(nn.Module) :
     def __init__(self, embedding_dim, dp=0.1):

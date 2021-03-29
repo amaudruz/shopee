@@ -1,60 +1,69 @@
 import os
 import torch
+import numpy as np
 import random
 from functools import partial
 import PIL
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer
 
-class TripletDataset(Dataset) :
-    def __init__(self, images_path, df, img_tfms, testing, text_tokenizer=None):
-        super(TripletDataset, self).__init__()
-        
+class TripletDS(Dataset):
+    def __init__(self, data, tokenizer, images_path, return_triplet = True):
+        super().__init__()
+        self.imgs = data['image'].tolist()
+        self.unique_labels = data['label_group'].unique().tolist()
+        self.labels = data['label_group'].tolist()
+        self.label_to_index_dict = (data.reset_index(drop = True)
+                                    .groupby('label_group')
+                                    .apply(lambda x: x.index.tolist())
+                                    .to_dict())
+        self.texts = tokenizer(data['title'].values.tolist(), return_tensors = 'pt',
+                               padding=True, truncation=True, max_length = 40)
         self.images_path = images_path
-        self.img_tfms = img_tfms
-        self.testing = testing
-              
-        self.df = df.copy()
-        self.df['label_group'] = self.df['label_group'].astype('category').cat.codes
-        self.df['index'] = range(self.df.shape[0])
-        self.labels = self.df['label_group'].unique()
-        self.label_to_index_list = self.df.groupby('label_group')['index'].apply(list)
+        self.return_triplet = return_triplet
         
-    def __getitem__(self, index) :
-        index_meta = self.df.iloc[index]
+    def __getitem__(self, idx):
         
-        anchor_image, anchor_text = self._get_item(index)
+        # anchor data
+        anchor_label = self.labels[idx]
+        anchor_img, anchor_txt = self._get_item(idx)
         
-        if self.testing: return anchor_image, anchor_text
+        if not self.return_triplet: return anchor_img, anchor_txt
         
-        label = index_meta['label_group']
+        # neg data
+        neg_label = np.random.choice(self.unique_labels)
+        while neg_label == anchor_label:
+            neg_label = np.random.choice(self.unique_labels)
+        neg_idx = np.random.choice(self.label_to_index_dict[neg_label])
+        neg_img, neg_txt = self._get_item(neg_idx)   
         
-        # positive sample
-        pos_index = random.choice(self.label_to_index_list[label])
-        # we don't want the positive sample being the same as the anchor
-        while pos_index == index :
-            pos_index = random.choice(self.label_to_index_list[label])
-        pos_image, pos_text = self._get_item(pos_index)
+        # pos data
+        pos_idxs = self.label_to_index_dict[anchor_label]
+        # picking an index not equal to anchor's index
+        pos_idxs = [o for o in pos_idxs if o != idx]
         
-        #negative sample
-        neg_label = random.choice(self.labels)
-        # Negative sample has to be different label from anchor 
-        while neg_label == index :
-            neg_label = random.choice(self.labels)
-        neg_index = random.choice(self.label_to_index_list[neg_label])
-        neg_image, neg_text = self._get_item(neg_index)
+        if len(pos_idxs) == 0:
+            # edge case, only 1 sample per label
+            pos_idxs = [idx]
+        pos_idx = np.random.choice(pos_idxs)
+        pos_img, pos_txt = self._get_item(pos_idx)
         
-        return anchor_image, anchor_text, pos_image, pos_text, neg_image, neg_text
+        return anchor_img, anchor_txt, pos_img, pos_txt, neg_img, neg_txt
         
-    def _get_item(self, index) :
-        image = PIL.Image.open(os.path.join(self.images_path, 
-                                            self.df.iloc[index]['image']))
-        image = self.img_tfms(image)
-        text = self.df.iloc[index]['title']
-        return image, text
+        
+    def __len__(self):
+        return len(self.imgs)
     
-    def __len__(self) :
-        return self.df.shape[0]
+    def _get_item(self, idx):
+        im = PIL.Image.open(os.path.join(self.images_path, self.imgs[idx]))
+        im = torch.tensor(np.array(im) / 255.0, dtype = torch.float).permute(2,0,1)
+        txt = {'input_ids' : self.texts['input_ids'][idx], 
+               'attention_mask' : self.texts['attention_mask'][idx]}
+        return im, txt
+
+def text_to_device(text, device):
+    return {'input_ids' : text['input_ids'].to(device),
+            'attention_mask' : text['attention_mask'].to(device)}
 
 def collate_fn(tokenizer, samples) :
     batch_size = len(samples)
@@ -74,7 +83,7 @@ def collate_fn(tokenizer, samples) :
 
 def create_dl(images_path, df_paths, img_tfms, pretrianed_tokenizer='distilbert-base-uncased', 
               batch_size=64, shuffle = True, testing = False) :
-    dataset = TripletDataset(images_path, df_paths, img_tfms, testing)
+    dataset = TripletDS(images_path, df_paths, img_tfms, testing)
     tokenizer = AutoTokenizer.from_pretrained(pretrianed_tokenizer)
     dl = DataLoader(dataset, batch_size=batch_size, collate_fn=partial(collate_fn, tokenizer), 
                     shuffle = shuffle, pin_memory = True)
