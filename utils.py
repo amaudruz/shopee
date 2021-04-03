@@ -42,7 +42,6 @@ def load_data(df_path='data/train.csv', train_perc=0.7) :
     df = pd.read_csv(df_path)
     labels = np.random.permutation(df['label_group'].unique())
 
-    train_perc = 0.7
     train_idx = int(train_perc * len(labels))
 
     train_labels = labels[:train_idx]
