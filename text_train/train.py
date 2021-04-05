@@ -224,3 +224,45 @@ def compute_centers(dataloader, model, dataframe, batch_size=64) :
     for i in range(len(label_indexes)) :
         centers[i] = embs[label_indexes.iloc[i].values[0]].mean(dim=0)
     return centers
+
+def freeze_bert_to(model, layer) :
+    layers = ['layer.{}'.format(i) for i in range(0, layer+1)]
+    n_frozen = 0
+    for n, p in model.named_parameters() :
+        if any(layer in n for layer in layers) :
+            n_frozen += 1
+            p.requires_grad = False
+    print('Froze {} parameters'.format(n_frozen))
+
+def unfreeze_bert_to(model, layer) :
+    layers = ['layer.{}'.format(i) for i in range(layer, 12)]
+    unfroze = 0
+    for n, p in model.named_parameters() :
+        if any(layer in n for layer in layers) :
+            unfroze += 1
+            p.requires_grad = True
+    print('Unfroze {} parameters'.format(unfroze))
+
+def freeze_bert_embeddings(model) :
+    frozen = 0
+    for n, p in model.named_parameters() :
+        if 'embeddings' in n:
+            frozen += 1
+            p.requires_grad = False
+    print('Unfroze {} parameters'.format(frozen))
+
+def unfreeze_bert_embeddings(model) :
+    unfrozen = 0
+    for n, p in model.named_parameters() :
+        if 'embeddings' in n:
+            unfrozen += 1
+            p.requires_grad = True
+    print('Unfroze {} parameters'.format(unfrozen))
+
+def freeze(model) :
+    for p in model.parameters() :
+        p.requires_grad = False
+
+def unfreeze(model) :
+    for p in model.parameters() :
+        p.requires_grad = True
