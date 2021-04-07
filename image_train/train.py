@@ -92,7 +92,7 @@ def compute_f1(embeddings, ls, thresholds):
 def train_full_data(model, optimizer, loss_func, sched, metric_fc, train_dl, n_epochs, train_df,
           train_transforms, val_transforms, save_path, val_first=False, 
           prev_best_info={'train': {'thr': None, 'f1': None}},
-          info_history=[], ep_start=0):
+          info_history=[], ep_start=0, test_score=True):
 
     tr_losses = []
     tr_scores = []
@@ -126,12 +126,13 @@ def train_full_data(model, optimizer, loss_func, sched, metric_fc, train_dl, n_e
         embs = F.normalize(torch.cat(embs, 0))
         
         # compute fsccores
-        if prev_best_info['train']['thr'] is None :
-            thrs = np.linspace(0.2, 1, 10)
-        else :
-            thrs = thrs = [prev_best_info['train']['thr'] - 0.1, prev_best_info['train']['thr'] - 0.05, prev_best_info['train']['thr'], prev_best_info['train']['thr'] + 0.05, prev_best_info['train']['thr'] + 0.1]
-        train_f1s, best_thresh_tr, f1_tr = compute_f1(embs, ys, thrs)
-        prev_best_info['train']['thr'], prev_best_info['train']['f1'] = best_thresh_tr, f1_tr
+        if test_score :
+            if prev_best_info['train']['thr'] is None :
+                thrs = np.linspace(0.2, 1, 10)
+            else :
+                thrs = thrs = [prev_best_info['train']['thr'] - 0.1, prev_best_info['train']['thr'] - 0.05, prev_best_info['train']['thr'], prev_best_info['train']['thr'] + 0.05, prev_best_info['train']['thr'] + 0.1]
+            train_f1s, best_thresh_tr, f1_tr = compute_f1(embs, ys, thrs)
+            prev_best_info['train']['thr'], prev_best_info['train']['f1'] = best_thresh_tr, f1_tr
 
         if ep % 2 == 0:
             path =  save_path + '_ep_{}.pth'.format(ep)
@@ -142,8 +143,12 @@ def train_full_data(model, optimizer, loss_func, sched, metric_fc, train_dl, n_e
         info_history.append(copy.deepcopy(prev_best_info))
 
         tr_losses.append(tr_loss)
-        summary = "Ep {}: Loss {:.4f} | F score {:.4f} with thresh {:.2f}".format(
-            ep, np.asarray(tr_loss).mean(),  f1_tr, best_thresh_tr)
+        if test_score :
+            summary = "Ep {}: Loss {:.4f} | F score {:.4f} with thresh {:.2f}".format(
+                ep, np.asarray(tr_loss).mean(),  f1_tr, best_thresh_tr)
+        else :
+            summary = "Ep {}: Loss {:.4f}".format(
+                ep, np.asarray(tr_loss).mean())
         print(summary)
     return prev_best_info, info_history, (tr_losses)
 
