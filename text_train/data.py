@@ -1,14 +1,14 @@
 from .imports import *
 
 class TextDS(Dataset):
-    def __init__(self, data, tokenizer):
+    def __init__(self, data, tokenizer, max_length=200):
         super().__init__()
         self.unique_labels = data['label_group'].unique().tolist()
         self.labels = data['label_group'].astype('category')
         self.label_codes = self.labels.cat.codes
         
         self.texts = tokenizer(data['title'].values.tolist(), return_tensors = 'pt',
-                               padding=True, truncation=True, max_length = 200)
+                               padding=True, truncation=True, max_length = max_length)
         
         
     def __getitem__(self, idx):
