@@ -8,7 +8,7 @@ class TextDS(Dataset):
         self.label_codes = self.labels.cat.codes
         
         self.texts = tokenizer(data['title'].values.tolist(), return_tensors = 'pt',
-                               padding=True, truncation=True, max_length = 40)
+                               padding=True, truncation=True, max_length = 200)
         
         
     def __getitem__(self, idx):

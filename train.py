@@ -1,12 +1,11 @@
-from pickle import NONE
-from .imports import *
-from .data import text_to_device
+from imports import *
+from text_train.data import *
 import copy
 
 NO_DEC = ["bias", "BatchNorm2d.weight", "BatchNorm2d.bias", "LayerNorm.weight", 'LayerNorm.bias',
                 "BatchNorm1d.weight", "BatchNorm1d.bias"]
 
-def get_hparams(train_dl, model, metric_fc, n_epochs=30, lf=nn.CrossEntropyLoss(), wd=1e-4, no_decay=NO_DEC, opt=torch.optim.AdamW, lr=1e-2, sched=True) :
+def get_hparams(train_dl, model, metric_fc, n_epochs=30, lf=nn.CrossEntropyLoss(), wd=1e-4, no_decay=NO_DEC, opt=torch.optim.AdamW, lr=1e-2) :
    
     params = list(model.named_parameters()) + list(metric_fc.named_parameters())
     optimizer_grouped_parameters = [
@@ -22,9 +21,8 @@ def get_hparams(train_dl, model, metric_fc, n_epochs=30, lf=nn.CrossEntropyLoss(
     optimizer = opt(optimizer_grouped_parameters, lr=lr)
 
     # learning rate scheduler
-    if sched :
-        sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr, pct_start=0.3,  # anneal_strategy = 'linear',
-                                                    total_steps=int(n_epochs * len(train_dl)))
+    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr, pct_start=0.3,  # anneal_strategy = 'linear',
+                                                total_steps=int(n_epochs * len(train_dl)))
 
     return n_epochs, lf, params, optimizer, sched
 
@@ -153,7 +151,7 @@ def train(model, optimizer, loss_func, sched, metric_fc, train_dl, val_dl, n_epo
 
             loss.backward()
             optimizer.step()
-            if sched is not None : sched.step()
+            sched.step()
 
             tr_loss.append(loss.item())
             pbar.set_description(f"Train loss: {round(np.mean(tr_loss),3)}")
