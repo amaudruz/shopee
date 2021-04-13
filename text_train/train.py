@@ -98,7 +98,7 @@ def train_full_data(model, optimizer, loss_func, sched, metric_fc, train_dl, n_e
 
             tr_loss.append(loss.item())
             pbar.set_description(f"Train loss: {round(np.mean(tr_loss),3)}")
-            embs.append(feature.detach())
+            embs.append(feature.detach().cpu())
         ys = pd.Series(torch.cat(ys, 0).numpy())
         embs = F.normalize(torch.cat(embs, 0))
         
@@ -157,7 +157,7 @@ def train(model, optimizer, loss_func, sched, metric_fc, train_dl, val_dl, n_epo
 
             tr_loss.append(loss.item())
             pbar.set_description(f"Train loss: {round(np.mean(tr_loss),3)}")
-            embs.append(feature.detach())
+            embs.append(feature.detach().cpu())
         ys = pd.Series(torch.cat(ys, 0).numpy())
         embs = F.normalize(torch.cat(embs, 0))
         
@@ -183,7 +183,7 @@ def train(model, optimizer, loss_func, sched, metric_fc, train_dl, val_dl, n_epo
             for txts, _ in pbar:
                 txts = text_to_device(txts, device)
                 feature = model(txts)
-                embs.append(feature)
+                embs.append(feature.detach().cpu())
             embs = F.normalize(torch.cat(embs, 0))
 
             # compute fsccores
