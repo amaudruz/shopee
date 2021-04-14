@@ -1,13 +1,10 @@
 from .imports import *
 
 class ImageDS(Dataset):
-    def __init__(self, data, images_path, return_triplet = True, trans = None):
+    def __init__(self, data, images_path, trans = None):
         super().__init__()
         self.imgs = data['image'].tolist()
-        #tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-uncased')
         self.unique_labels = data['label_group'].unique().tolist()
-        """self.texts = tokenizer(data['title'].values.tolist(), return_tensors = 'pt',
-                               padding=True, truncation=True, max_length = 200)"""
         self.labels = data['label_group'].astype('category')
         self.label_codes = self.labels.cat.codes
         self.trans = trans
@@ -26,10 +23,7 @@ class ImageDS(Dataset):
         im = PIL.Image.open(os.path.join(self.images_path, self.imgs[idx])).convert('RGB')
         if self.trans is not None:
             im = self.trans(im)
-        #im = torch.tensor(np.array(im) / 255.0, dtype = torch.float).permute(2,0,1)
-        """txt = {'input_ids' : self.texts['input_ids'][idx], 
-               'attention_mask' : self.texts['attention_mask'][idx]}"""
-        return im#np.array(im) / 255.0#, txt
+        return im
 
 def load_data(df_path='data/train.csv', train_perc=0.7) :
     df = pd.read_csv(df_path)
