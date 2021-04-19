@@ -184,14 +184,13 @@ def train(model, optimizer, loss_func, sched, metric_fc, train_dl, val_dl, n_epo
             loss = loss_func(out, labels)
 
             loss.backward()
-            print('grad' , list(model.parameters())[0].grad)
             optimizer.step()
             if sched is not None : sched.step()
 
             tr_loss.append(loss.item())
             pbar.set_description(f"Train loss: {round(np.mean(tr_loss),3)}")
             embs.append(feature.detach())
-            print(loss)
+        
         ys = pd.Series(torch.cat(ys, 0).numpy())
         embs = F.normalize(torch.cat(embs, 0))
         
