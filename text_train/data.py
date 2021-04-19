@@ -25,7 +25,8 @@ class TextDS(Dataset):
     
     def _get_item(self, idx):
         txt = {'input_ids' : self.texts['input_ids'][idx], 
-               'attention_mask' : self.texts['attention_mask'][idx]}
+               'attention_mask' : self.texts['attention_mask'][idx],
+               'token_type_ids' : self.texts['token_type_ids'][idx]}
         return txt
 
 def load_data(df_path='data/train.csv', train_perc=0.7) :
@@ -42,4 +43,5 @@ def load_data(df_path='data/train.csv', train_perc=0.7) :
 
 def text_to_device(text, device):
     return {'input_ids' : text['input_ids'].to(device),
-            'attention_mask' : text['attention_mask'].to(device)}
+            'attention_mask' : text['attention_mask'].to(device),
+            'token_type_ids' : text['token_type_ids'].to(device)}
