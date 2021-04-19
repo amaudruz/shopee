@@ -270,14 +270,17 @@ def train_16(model, optimizer, loss_func, sched, metric_fc, train_dl, val_dl, n_
                 out = metric_fc(feature, labels)
                 loss = loss_func(out, labels)
 
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+                # scaler.scale(loss).backward()
+                # scaler.step(optimizer)
+                # scaler.update()
+                # sched.step()
+            loss.backward()
+            optimizer.step()
             sched.step()
+            
             tr_loss.append(loss.item())
             pbar.set_description(f"Train loss: {round(np.mean(tr_loss),3)}")
             embs.append(feature.detach())
-            print(loss)
         ys = pd.Series(torch.cat(ys, 0).numpy())
         embs = F.normalize(torch.cat(embs, 0))
         
