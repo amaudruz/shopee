@@ -36,10 +36,17 @@ def compute_f1(embeddings, ls, threshold) :
     print('f1 score : {} | precision : {} | recall : {}'.format(f_score, precision, recall))
     return f_score, precision, recall
 
-def load_data(df_path='data/train.csv', train_perc=0.7) :
+def load_data(df_path='data/train.csv', train_perc=0.7, decide=None) :
     # load in data
 
     df = pd.read_csv(df_path)
+    if decide is not None :
+        df['label_group'] = df['label_group'].astype(str)
+        for k, v in decide.items() :
+            if v!= 'M' : continue
+            lbls = df[df['image_phash']==k]['label_group'].unique()
+            merged_lbls = ''.join(lbls)
+            df.loc[df['label_group'].isin(lbls), 'label_group'] = merged_lbls
     labels = np.random.permutation(df['label_group'].unique())
 
     train_idx = int(train_perc * len(labels))
