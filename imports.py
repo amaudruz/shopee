@@ -22,6 +22,7 @@ from transformers import BertModel
 import matplotlib.pyplot as plt
 
 import timm
+import clip
 
 import warnings
 warnings.filterwarnings('ignore')

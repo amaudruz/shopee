@@ -29,7 +29,8 @@ class ArcMarginProduct(nn.Module):
         else:
             print('Using center as wieghts')
             self.weight = Parameter(centers.to(device))
-        
+        if half :
+            self.weight.data = self.weight.data.half()
         self.easy_margin = easy_margin
         self.cos_m = math.cos(m)
         self.sin_m = math.sin(m)
@@ -38,7 +39,7 @@ class ArcMarginProduct(nn.Module):
 
     def forward(self, input, label):
         # --------------------------- cos(theta) & phi(theta) ---------------------------
-        cosine = F.linear(F.normalize(input), F.normalize(self.weight)).float()
+        cosine = F.linear(F.normalize(input), F.normalize(self.weight))
         sine = torch.sqrt((1.0 - torch.pow(cosine, 2)).clamp(0, 1))
         phi = cosine * self.cos_m - sine * self.sin_m
         if self.easy_margin:
